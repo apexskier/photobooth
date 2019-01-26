@@ -12,6 +12,7 @@ import numpy as np
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 from socketIO_client import SocketIO, BaseNamespace
+from piVideoStream import PiVideoStream
 
 # enable safe shutdown with ctl+c
 global running
@@ -20,6 +21,7 @@ running = True
 def signal_handler(signal, frame):
     global running
     running = False
+    print("received signal, quitting")
 
 signal.signal(signal.SIGINT, signal_handler)
 
@@ -32,7 +34,7 @@ logging.basicConfig(format='[%(levelname)s|%(asctime)s] %(message)s', level=logg
 logger = logging.getLogger('photobooth')
 logger.setLevel(logging.INFO)
 
-resolution = (320, 240)
+resolution = (640, 480)
 
 current_dir = path.dirname(__file__)
 face_cascade = cv2.CascadeClassifier(path.join(current_dir, 'haarcascade_frontalface_default.xml'))
@@ -51,7 +53,6 @@ def mse(imageA, imageB):
     # the two images are
     return err
 
-
 class RateLimit(object):
     """
     Initialize with a function to be called. Calling this object calls the
@@ -68,7 +69,6 @@ class RateLimit(object):
             self.func(*args, **kwargs)
             self.last_called = now
 
-
 class WaitLimit(RateLimit):
     """
     Same functionality as RateLimit, but it sets timeout every time called.
@@ -81,12 +81,16 @@ class WaitLimit(RateLimit):
         self.last_called = now
 
 class Fps(object):
-    last_frame_time = None
+    _last_frame_time = None
+    _frame_times = []
 
     def frame(self, image, now, first_frame):
         if not first_frame:
-            frame_time = now - self.last_frame_time
+            frame_time = now - self._last_frame_time
             fps = 1 / frame_time
+
+            self._frame_times.append(fps)
+            self._frame_times = self._frame_times[-200:]
 
             cv2.rectangle(
                     img = image,
@@ -97,14 +101,14 @@ class Fps(object):
                 )
             cv2.putText(
                     img = image,
-                    text = "{:5.0f} FPS".format(fps),
+                    text = "{:5.0f} FPS".format(sum(self._frame_times) / float(len(self._frame_times))),
                     org = (0, resolution[1] - 4),
                     color = (255, 255, 255),
                     fontFace = cv2.FONT_HERSHEY_PLAIN,
                     fontScale = 0.4,
                 )
+        self._last_frame_time = now
 
-        self.last_frame_time = now
 
 class Faces(object):
     last_seen_face_at = 0
@@ -237,51 +241,49 @@ class PhotoBooth():
         self.photostrip.snap()
         self.countDownPhoto()
 
-
-
 # continous data
 first_frame = True
 
-# initialize camera
-logger.info('initializing camera...')
-with PiCamera() as camera:
-    # give camera time to start up
-    time.sleep(1)
+vs = PiVideoStream(resolution=resolution)
+logger.info('initializing video...')
+vs.start()
+time.sleep(1)
 
-    camera.resolution = resolution
-    camera.framerate = 30 # max framerate
+pb = PhotoBooth()
 
-    pb = PhotoBooth()
+fps = Fps()
+faces = Faces(lambda: pb.start())
 
-    fps = Fps()
-    faces = Faces(lambda: pb.start())
+def stop():
+    print("quitting")
+    vs.stop()
+    cv2.destroyAllWindows()
 
-    with PiRGBArray(camera, size=resolution) as stream:
-        logger.info('starting capture...')
-        for frame in camera.capture_continuous(stream, format="bgr", use_video_port=True):
-            now = time.time()
-            if not running:
-                break
+while running:
+    try:
+        now = time.time()
 
-            image = frame.array
-            if args.preview:
-                preview = image.copy()
+        image = vs.read()
 
-            faces.frame(preview, now, first_frame)
-            pb.frame(preview, now, first_frame)
+        if args.preview:
+            preview = image.copy()
 
-            if args.fps:
-                fps.frame(preview, now, first_frame)
+        #faces.frame(preview, now, first_frame)
+        pb.frame(preview, now, first_frame)
 
-            if args.preview:
-                cv2.imshow('Preview', preview)
+        if args.fps:
+            fps.frame(preview, now, first_frame)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                running = False
+        if args.preview:
+            cv2.imshow('Preview', preview)
 
-            first_frame = False
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            running = False
 
-            # clear the stream for next frame
-            stream.seek(0)
-            stream.truncate()
+        first_frame = False
+    except Exception as e:
+        stop()
+        raise e
+
+stop()
 
