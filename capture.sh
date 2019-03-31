@@ -1,9 +1,11 @@
 #!/bin/bash
 
+set -xe
+
 ID=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 WORKING_DIR="./capture/$ID"
-mkdir -p "$WORKING_DIR" 
+mkdir -p "$WORKING_DIR"
 
 echo "capturing..."
 

@@ -53,6 +53,7 @@ class PhotoStripGenerator():
 
             final = self._template_image.copy()
             for index, layout in enumerate(self._template_layout):
+                logging.info("adding photo {}".format(index))
                 saved_path = files[index]
                 for size, position in layout:
                     final.paste(process_raw_file(saved_path, size), position)
@@ -65,17 +66,19 @@ class PhotoStripGenerator():
             countdown()
             captures.append(self._camera.capture())
 
-        print("captured!")
+        logging.info("captured!")
 
         files = []
         for capture in captures:
+            logging.info("saving {}".format(capture.name))
             saved_path = os.path.join(capture_dir, os.path.basename(capture.name))
             self._camera.save(capture, saved_path)
             files.append(saved_path)
 
+        logging.info("filling template")
         fill_template(files)
 
-        print("done")
+        logging.info("done")
 
 def main():
     """main"""
