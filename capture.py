@@ -43,7 +43,7 @@ class PhotoStripGenerator():
 
     def capture(self):
         """take photos and create strip"""
-        capture_id = datetime.datetime.now().isoformat(timespec="seconds")
+        capture_id = datetime.datetime.now().isoformat()
         capture_dir = os.path.join("capture", capture_id)
 
         os.makedirs(capture_dir, exist_ok=True)
