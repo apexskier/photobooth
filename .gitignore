@@ -1,0 +1,9 @@
+photobooth.cfg
+**/*.pyc
+**/__pycache__
+.eggs
+.venv
+build
+dist
+capture
+
