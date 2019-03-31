@@ -35,7 +35,7 @@ done
 
 echo "  combining..."
 
-TEMPLATE_FILE="./template.png"
+TEMPLATE_FILE="./4x4.png"
 FINAL_FILE="./${WORKING_DIR}/final.jpg"
 
 TOP_LEFT_FILE="./${WORKING_DIR}/image_1_small.jpg"

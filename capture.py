@@ -2,23 +2,24 @@
 Photobooth capture script
 """
 
-import asyncio
 import logging
 import os
 import datetime
+import time
 
-import rawpy
 from PIL import Image, ImageOps
+import rawpy
+
 from camera import Camera
 from templates import TEMPLATE_SQUARE
 
 COUNTDOWN = 5
 
-async def countdown():
+def countdown():
     """Display a countdown timer"""
     for i in reversed(range(0, COUNTDOWN)):
         print(i + 1)
-        await asyncio.sleep(1)
+        time.sleep(1)
 
 def process_raw_file(file_path, size):
     """read a raw image file and convert to the format we'll insert into the template"""
@@ -31,52 +32,59 @@ def process_raw_file(file_path, size):
         method=Image.ANTIALIAS,
     )
 
-async def main():
-    """main"""
-    logging.basicConfig(
-        format='%(levelname)s: %(name)s: %(message)s',
-        level=logging.WARNING,
-    )
+class PhotoStripGenerator():
+    """a generator for a specific photostrip template"""
+    def __init__(self, template):
+        self._camera = Camera()
+        self._template_image = Image.open(template['file'])
+        self._template_layout = template['layout']
 
-    capture_id = datetime.datetime.now().isoformat(timespec="seconds")
-    capture_dir = os.path.join("capture", capture_id)
+    def capture(self):
+        """take photos and create strip"""
+        capture_id = datetime.datetime.now().isoformat(timespec="seconds")
+        capture_dir = os.path.join("capture", capture_id)
 
-    os.makedirs(capture_dir, exist_ok=True)
+        os.makedirs(capture_dir, exist_ok=True)
 
-    template_image = Image.open(TEMPLATE_SQUARE['file'])
-    template_layout = TEMPLATE_SQUARE['layout']
+        def fill_template(files):
+            assert (len(files) == len(self._template_layout)), "files don't match template slots"
 
-    def fill_template(files):
-        assert (len(files) == len(template_layout)), "files don't match template slots"
+            final = self._template_image.copy()
+            for index, layout in enumerate(self._template_layout):
+                saved_path = files[index]
+                for size, position in layout:
+                    final.paste(process_raw_file(saved_path, size), position)
 
-        final = template_image.copy()
-        for index, layout in enumerate(template_layout):
-            saved_path = files[index]
-            for size, position in layout:
-                final.paste(process_raw_file(saved_path, size), position)
-
-        final.convert("RGB").save(os.path.join(capture_dir, "final.jpg"), "JPEG", quality=90)
-
-    with Camera() as camera:
-        print("starting")
+            final.convert("RGB").save(os.path.join(capture_dir, "final.jpg"), "JPEG", quality=90)
 
         captures = []
 
-        for _ in template_layout:
-            # await countdown()
-            captures.append(camera.capture())
+        for _ in self._template_layout:
+            await countdown()
+            captures.append(self._camera.capture())
 
         print("captured!")
 
         files = []
         for capture in captures:
             saved_path = os.path.join(capture_dir, os.path.basename(capture.name))
-            camera.save(capture, saved_path)
+            self._camera.save(capture, saved_path)
             files.append(saved_path)
 
         fill_template(files)
 
         print("done")
 
+def main():
+    """main"""
+    logging.basicConfig(
+        format='%(levelname)s: %(name)s: %(message)s',
+        level=logging.WARNING,
+    )
+
+    generator = PhotoStripGenerator(TEMPLATE_SQUARE)
+
+    generator.capture()
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

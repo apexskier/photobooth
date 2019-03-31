@@ -6,15 +6,11 @@ class Camera():
     """gphoto2 Camera abstraction"""
 
     def __init__(self):
-        self._camera = None
-
-    def __enter__(self):
         gp.check_result(gp.use_python_logging())
         self._camera = gp.check_result(gp.gp_camera_new())
         gp.check_result(gp.gp_camera_init(self._camera))
-        return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __del__(self):
         gp.check_result(gp.gp_camera_exit(self._camera))
 
     def capture(self):
