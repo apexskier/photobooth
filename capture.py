@@ -6,12 +6,14 @@ import logging
 import os
 import datetime
 import time
+import sys
 
 from PIL import Image, ImageOps
 import rawpy
 
 from camera import Camera
 from templates import TEMPLATE_SQUARE
+from cli_input import wait_for_input
 
 COUNTDOWN = 5
 
@@ -60,7 +62,7 @@ class PhotoStripGenerator():
         captures = []
 
         for _ in self._template_layout:
-            await countdown()
+            countdown()
             captures.append(self._camera.capture())
 
         print("captured!")
@@ -84,7 +86,22 @@ def main():
 
     generator = PhotoStripGenerator(TEMPLATE_SQUARE)
 
-    generator.capture()
+    stored_exception = None
+    capturing = False
+    while True:
+        try:
+            if stored_exception:
+                break
+            wait_for_input()
+            capturing = True
+            generator.capture()
+            capturing = False
+        except KeyboardInterrupt:
+            if capturing:
+                stored_exception = sys.exc_info()
+            else:
+                break
+
 
 if __name__ == "__main__":
     main()
