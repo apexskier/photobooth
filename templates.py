@@ -10,13 +10,13 @@ TEMPLATE_SQUARE = {
     'file': '4x4.png'
 }
 
-TEMPLATE_SIZE = (630, 465)
+TEMPLATE_SIZE = (535, 420)
 TEMPLATE_STRIPS = {
     'layout': [
         # ((size_x, size_y), (position_x, position_y)), position from top left
-        [(TEMPLATE_SIZE, (45, 45)), (TEMPLATE_SIZE, (765, 45))],
-        [(TEMPLATE_SIZE, (45, 555)), (TEMPLATE_SIZE, (765, 555))],
-        [(TEMPLATE_SIZE, (45, 1065)), (TEMPLATE_SIZE, (765, 1065))],
+        [(TEMPLATE_SIZE, (30, 30)), (TEMPLATE_SIZE, (625, 30))],
+        [(TEMPLATE_SIZE, (30, 480)), (TEMPLATE_SIZE, (625, 480))],
+        [(TEMPLATE_SIZE, (30, 930)), (TEMPLATE_SIZE, (625, 930))],
     ],
     'file': '4x6.jpg'
 }

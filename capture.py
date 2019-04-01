@@ -12,10 +12,13 @@ from PIL import Image, ImageOps
 import rawpy
 
 from camera import Camera
-from templates import TEMPLATE_SQUARE
+from templates import TEMPLATE_SQUARE, TEMPLATE_STRIPS
 from cli_input import wait_for_input
+from printer import get_printer
 
-COUNTDOWN = 5
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+
+COUNTDOWN = 3
 
 def countdown():
     """Display a countdown timer"""
@@ -23,62 +26,70 @@ def countdown():
         print(i + 1)
         time.sleep(1)
 
-def process_raw_file(file_path, size):
-    """read a raw image file and convert to the format we'll insert into the template"""
-    raw = rawpy.imread(file_path)
-    rgb = raw.postprocess()
-    img = Image.fromarray(rgb)
-    return ImageOps.fit(
-        image=img,
-        size=size,
-        method=Image.ANTIALIAS,
-    )
+def read_file(file_path):
+    filename, file_extension = os.path.splitext(file_path)
+    if file_extension == ".jpg" or file_extension == ".jpeg":
+        logging.info("reading jpg file {}".format(file_path))
+        img = Image.open(file_path)
+    elif file_extension == ".arw":
+        logging.info("reading raw file {}".format(file_path))
+        raw = rawpy.imread(file_path)
+        rgb = raw.postprocess()
+        img = Image.fromarray(rgb)
+    else:
+        raise Exception("unknown file extension {}".format(file_extension))
 
-class PhotoStripGenerator():
-    """a generator for a specific photostrip template"""
-    def __init__(self, template):
-        self._camera = Camera()
-        self._template_image = Image.open(template['file'])
-        self._template_layout = template['layout']
+class PhotoStrip():
+    def __init__(self, capture_id = None):
+        self._capture_id = capture_id or datetime.datetime.now().isoformat()
+        self._capture_dir = os.path.join("capture", self._capture_id)
 
-    def capture(self):
+        os.makedirs(self._capture_dir, exist_ok=True)
+
+    def capture_files(self, camera)
         """take photos and create strip"""
-        capture_id = datetime.datetime.now().isoformat()
-        capture_dir = os.path.join("capture", capture_id)
+        logging.info("capturing")
 
-        os.makedirs(capture_dir, exist_ok=True)
-
-        def fill_template(files):
-            assert (len(files) == len(self._template_layout)), "files don't match template slots"
-
-            final = self._template_image.copy()
-            for index, layout in enumerate(self._template_layout):
-                logging.info("adding photo {}".format(index))
-                saved_path = files[index]
-                for size, position in layout:
-                    final.paste(process_raw_file(saved_path, size), position)
-
-            final.convert("RGB").save(os.path.join(capture_dir, "final.jpg"), "JPEG", quality=90)
+        final_image_path = os.path.join(self._capture_dir, "final.jpg")
+        print_image_path = os.path.join(self._capture_dir, "final_print.jpg")
 
         captures = []
 
-        for _ in self._template_layout:
+        for index, _ in enumerate(self._template_layout):
             countdown()
+            logging.info("capturing photo {}".format(index))
             captures.append(self._camera.capture())
 
         logging.info("captured!")
 
         files = []
-        for capture in captures:
+        for index, capture in enumerate(captures):
             logging.info("saving {}".format(capture.name))
-            saved_path = os.path.join(capture_dir, os.path.basename(capture.name))
+            filename, file_extension = os.path.splitext(capture.name)
+            saved_path = os.path.join(self._capture_dir, "image_{}{}".format(index, file_extension))
             self._camera.save(capture, saved_path)
             files.append(saved_path)
 
-        logging.info("filling template")
-        fill_template(files)
+        return files
 
-        logging.info("done")
+def create_img_from_template(self, files, template):
+    logging.info("filling template")
+    assert (len(files) == len(self._template_layout)), "files don't match template slots"
+
+    final = self._template_image.copy()
+    for index, layout in enumerate(self._template_layout):
+        logging.info("adding photo {}".format(index))
+        saved_path = files[index]
+        for size, position in layout:
+            img = read_file(saved_path)
+            resized = ImageOps.fit(
+                image=img,
+                size=size,
+                method=Image.ANTIALIAS,
+            )
+            final.paste(resized, position)
+
+    return final
 
 def main():
     """main"""
@@ -87,7 +98,8 @@ def main():
         level=logging.WARNING,
     )
 
-    generator = PhotoStripGenerator(TEMPLATE_SQUARE)
+    generator = PhotoStripGenerator(TEMPLATE_STRIPS)
+    printer = get_printer()
 
     stored_exception = None
     capturing = False
@@ -97,7 +109,20 @@ def main():
                 break
             wait_for_input()
             capturing = True
-            generator.capture()
+            files = generator.capture_files()
+
+            # https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
+            printable_image = Image.new("RGB", (1248, 1872))
+            printable_image.paste(final, (34, 46))
+            printable_image.save(print_image_path, "JPEG", quality=97)
+
+            final.convert("RGB").save(final_image_path, "JPEG", quality=90)
+
+            logging.info("done")
+            return (final_image_path, print_image_path)
+
+            #if printer:
+            #    printer.print_file(final_image_path)
             capturing = False
         except KeyboardInterrupt:
             if capturing:
