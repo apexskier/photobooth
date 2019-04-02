@@ -7,23 +7,24 @@ class Camera():
 
     def __init__(self):
         gp.check_result(gp.use_python_logging())
-        self._camera = gp.check_result(gp.gp_camera_new())
-        gp.check_result(gp.gp_camera_init(self._camera))
+
+        self._camera = gp.Camera()
+        self._camera.init()
 
     def __del__(self):
-        gp.check_result(gp.gp_camera_exit(self._camera))
+        self._camera.exit()
 
     def capture(self):
         """Capture an image as fast as possible. Returns an object used in save"""
-        file_path = gp.check_result(gp.gp_camera_capture(self._camera, gp.GP_CAPTURE_IMAGE))
-        return file_path
+        return self._camera.capture(gp.GP_CAPTURE_IMAGE)
 
     def save(self, capture, file_path):
         """Save a previously captured image to the file system"""
-        camera_file = gp.check_result(gp.gp_camera_file_get(
-            self._camera,
+        camera_file = self._camera.file_get(
             capture.folder,
             capture.name,
             gp.GP_FILE_TYPE_NORMAL
-        ))
-        gp.check_result(gp.gp_file_save(camera_file, file_path))
+        )
+        camera_file.save(file_path)
+
+        del camera_file
