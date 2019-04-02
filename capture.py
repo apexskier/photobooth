@@ -124,12 +124,12 @@ def main():
     printer = get_printer()
 
     with Camera() as camera:
-        #test_path = camera.save(
-        #    camera.capture(),
-        #    os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
-        #)
-        #if not test_path.endswith('.jpg'):
-        #    logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
+        test_path = camera.save(
+            camera.capture(),
+            os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
+        )
+        if not test_path.endswith('.jpg'):
+            logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
 
         stored_exception = None
         capturing = False
@@ -140,7 +140,6 @@ def main():
                 wait_for_input()
                 capturing = True
 
-                # ps = PhotoStrip("2019-04-01T16:50:31.213095")
                 ps = PhotoStrip()
                 logging.info("starting")
                 files = ps.capture_files(camera, len(TEMPLATE_STRIPS['layout']))
