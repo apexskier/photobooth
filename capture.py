@@ -152,19 +152,20 @@ def main():
                 if printer:
                     logging.info("printing")
 
-                    # https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
+                    # initially based on https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
                     #base_image_size = (1190, 1760)
                     #top_left_inset = (34, 46)
                     #bot_right_inset = (24, 66)
                     base_image_size = (1190, 1760)
-                    top_left_inset = (30, 60)
-                    bot_right_inset = (30, 66)
+                    # assert base_image_size == template image dimensions, "template image must be the exact right size"
+                    top_left_inset = (28, 52)
+                    bot_right_inset = (36, 130)
 
                     printable_image = Image.new(
                         "RGB",
                         (
-                            base_image_size[0] + top_left_inset[0],
-                            base_image_size[1] + top_left_inset[1]
+                            base_image_size[0] + top_left_inset[0] + bot_right_inset[0],
+                            base_image_size[1] + top_left_inset[1] + bot_right_inset[0]
                         )
                     )
                     printable_image.paste(img, top_left_inset)
