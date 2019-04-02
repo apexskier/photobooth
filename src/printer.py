@@ -6,8 +6,8 @@ class Printer():
         self._conn = conn
         self._count = 0
 
-
     def print_file(self, file_name):
+        return
         self._conn.printFile(
             self._printer,
             file_name,

@@ -15,17 +15,18 @@ from camera import Camera
 from templates import TEMPLATE_SQUARE, TEMPLATE_STRIPS
 from cli_input import wait_for_input
 from printer import get_printer
+from lights import LedLightUi
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-#COUNTDOWN = 3
-COUNTDOWN = 1
+COUNTDOWN = 2
 
-def countdown():
+def countdown(lights):
     """Display a countdown timer"""
-    for i in reversed(range(0, COUNTDOWN)):
-        print(i + 1)
-        time.sleep(1)
+    lights.countdown_animation(COUNTDOWN)
+    # for i in reversed(range(0, COUNTDOWN)):
+    #     print(i + 1)
+    #     time.sleep(1)
 
 def read_file(file_path):
     _, file_extension = os.path.splitext(file_path)
@@ -48,14 +49,14 @@ class PhotoStrip():
 
         os.makedirs(self.capture_dir, exist_ok=True)
 
-    def capture_files(self, camera, count):
+    def capture_files(self, lights, camera, count):
         """take photos and create strip"""
         logging.info("capturing")
 
         captures = []
 
         for index in range(count):
-            countdown()
+            countdown(lights)
             logging.info("capturing photo {}".format(index))
             captures.append(camera.capture())
 
@@ -93,6 +94,7 @@ def get_template_image(template):
     return _CACHED_TEMPLATES[template['file']]
 
 def create_img_from_template(files, template):
+    logging.info("using template {}".format(TEMPLATE_STRIPS['name']))
     template_image = get_template_image(template)
     template_layout = template['layout']
 
@@ -114,6 +116,27 @@ def create_img_from_template(files, template):
 
     return final
 
+def print_image(printer, img):
+    logging.info("printing")
+
+    # initially based on https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
+    base_image_size = (1190, 1760)
+    # assert base_image_size == template image dimensions, "template image must be the exact right size"
+    top_left_inset = (28, 52)
+    bot_right_inset = (36, 130)
+
+    printable_image = Image.new(
+        "RGB",
+        (
+            base_image_size[0] + top_left_inset[0] + bot_right_inset[0],
+            base_image_size[1] + top_left_inset[1] + bot_right_inset[0]
+        )
+    )
+    printable_image.paste(img, top_left_inset)
+    printable_image.save("./toprint.jpg", "JPEG", quality=97)
+
+    printer.print_file("./toprint.jpg")
+
 def main():
     """main"""
     logging.basicConfig(
@@ -121,63 +144,42 @@ def main():
         level=logging.WARNING,
     )
 
-    printer = get_printer()
+    keyboard_interrupt = None
+    capturing = False
 
-    with Camera() as camera:
-        test_path = camera.save(
-            camera.capture(),
-            os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
-        )
-        if not test_path.endswith('.jpg'):
-            logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
+    try:
+        printer = get_printer()
 
-        stored_exception = None
-        capturing = False
-        while True:
-            try:
-                if stored_exception:
-                    break
+        with LedLightUi() as lights, Camera() as camera:
+            test_path = camera.save(
+                camera.capture(),
+                os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
+            )
+            if not test_path.endswith('.jpg'):
+                logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
+
+            while not keyboard_interrupt:
+                lights.ready_animation()
                 wait_for_input()
                 capturing = True
 
                 ps = PhotoStrip()
-                logging.info("starting")
-                files = ps.capture_files(camera, len(TEMPLATE_STRIPS['layout']))
-                logging.info("using template {}".format(TEMPLATE_STRIPS['name']))
+
+                files = ps.capture_files(lights, camera, len(TEMPLATE_STRIPS['layout']))
+
+                lights.processing_animation()
+
                 img = create_img_from_template(files, TEMPLATE_STRIPS)
-                logging.info("saving")
                 ps.save_final_img(img, TEMPLATE_STRIPS['name'])
 
                 if printer:
-                    logging.info("printing")
+                    print_image(printer, img)
 
-                    # initially based on https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
-                    #base_image_size = (1190, 1760)
-                    #top_left_inset = (34, 46)
-                    #bot_right_inset = (24, 66)
-                    base_image_size = (1190, 1760)
-                    # assert base_image_size == template image dimensions, "template image must be the exact right size"
-                    top_left_inset = (28, 52)
-                    bot_right_inset = (36, 130)
-
-                    printable_image = Image.new(
-                        "RGB",
-                        (
-                            base_image_size[0] + top_left_inset[0] + bot_right_inset[0],
-                            base_image_size[1] + top_left_inset[1] + bot_right_inset[0]
-                        )
-                    )
-                    printable_image.paste(img, top_left_inset)
-                    printable_image.save("./toprint.jpg", "JPEG", quality=97)
-
-                    printer.print_file("./toprint.jpg")
-
+                lights.complete_animation()
                 capturing = False
-            except KeyboardInterrupt:
-                if capturing:
-                    stored_exception = sys.exc_info()
-                else:
-                    break
+    except KeyboardInterrupt:
+        if capturing:
+            keyboard_interrupt = sys.exc_info()
 
 
 if __name__ == "__main__":
