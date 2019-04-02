@@ -18,7 +18,8 @@ from printer import get_printer
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-COUNTDOWN = 3
+#COUNTDOWN = 3
+COUNTDOWN = 1
 
 def countdown():
     """Display a countdown timer"""
@@ -63,13 +64,11 @@ class PhotoStrip():
         files = []
         for index, capture in enumerate(captures):
             logging.info("saving {}".format(capture.name))
-            _, file_extension = os.path.splitext(capture.name)
-            saved_path = os.path.join(self.capture_dir, "image_{}{}".format(index, file_extension))
-            camera.save(capture, saved_path)
-            files.append(saved_path)
+            saved_path = os.path.join(self.capture_dir, "image_{}".format(index))
+            files.append(camera.save(capture, saved_path))
 
         return files
-    
+
     def read_files(self, count):
         logging.info("reading")
 
@@ -82,7 +81,7 @@ class PhotoStrip():
 
         files.sort()
         return [os.path.join(self.capture_dir, f) for f in files]
-    
+
     def save_final_img(self, img, name):
         final_image_path = os.path.join(self.capture_dir, "{}.jpg".format(name))
         img.convert("RGB").save(final_image_path, "JPEG", quality=90)
@@ -102,8 +101,9 @@ def create_img_from_template(files, template):
 
     final = template_image.copy()
     for index, layout in enumerate(template_layout):
-        logging.info("adding photo {}".format(index))
-        img = read_file(files[index])
+        file_path = files[index]
+        logging.info("adding photo {}: ".format(index, file_path))
+        img = read_file(file_path)
         for size, position in layout:
             resized = ImageOps.fit(
                 image=img,
@@ -122,42 +122,62 @@ def main():
     )
 
     printer = get_printer()
-    camera = Camera()
 
-    stored_exception = None
-    capturing = False
-    while True:
-        try:
-            if stored_exception:
-                break
-            wait_for_input()
-            capturing = True
+    with Camera() as camera:
+        #test_path = camera.save(
+        #    camera.capture(),
+        #    os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
+        #)
+        #if not test_path.endswith('.jpg'):
+        #    logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
 
-            # ps = PhotoStrip("2019-04-01T16:50:31.213095")
-            ps = PhotoStrip()
-            logging.info("starting")
-            files = ps.capture_files(camera, len(TEMPLATE_STRIPS['layout']))
-            logging.info("using template {}".format(TEMPLATE_STRIPS['name']))
-            img = create_img_from_template(files, TEMPLATE_STRIPS)
-            logging.info("saving")
-            ps.save_final_img(img, TEMPLATE_STRIPS['name'])
+        stored_exception = None
+        capturing = False
+        while True:
+            try:
+                if stored_exception:
+                    break
+                wait_for_input()
+                capturing = True
 
-            if printer:
-                logging.info("printing")
+                # ps = PhotoStrip("2019-04-01T16:50:31.213095")
+                ps = PhotoStrip()
+                logging.info("starting")
+                files = ps.capture_files(camera, len(TEMPLATE_STRIPS['layout']))
+                logging.info("using template {}".format(TEMPLATE_STRIPS['name']))
+                img = create_img_from_template(files, TEMPLATE_STRIPS)
+                logging.info("saving")
+                ps.save_final_img(img, TEMPLATE_STRIPS['name'])
 
-                # https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
-                printable_image = Image.new("RGB", (1248, 1872))
-                printable_image.paste(img, (34, 46))
-                printable_image.save("./toprint.jpg", "JPEG", quality=97)
+                if printer:
+                    logging.info("printing")
 
-                printer.print_file("./toprint.jpg")
+                    # https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
+                    #base_image_size = (1190, 1760)
+                    #top_left_inset = (34, 46)
+                    #bot_right_inset = (24, 66)
+                    base_image_size = (1190, 1760)
+                    top_left_inset = (30, 60)
+                    bot_right_inset = (30, 66)
 
-            capturing = False
-        except KeyboardInterrupt:
-            if capturing:
-                stored_exception = sys.exc_info()
-            else:
-                break
+                    printable_image = Image.new(
+                        "RGB",
+                        (
+                            base_image_size[0] + top_left_inset[0],
+                            base_image_size[1] + top_left_inset[1]
+                        )
+                    )
+                    printable_image.paste(img, top_left_inset)
+                    printable_image.save("./toprint.jpg", "JPEG", quality=97)
+
+                    printer.print_file("./toprint.jpg")
+
+                capturing = False
+            except KeyboardInterrupt:
+                if capturing:
+                    stored_exception = sys.exc_info()
+                else:
+                    break
 
 
 if __name__ == "__main__":

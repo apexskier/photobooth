@@ -17,6 +17,7 @@ class Printer():
                 'ColorModel': 'RBG',
                 'StpBorderless': 'True',
                 'StpImageType': 'Photo',
+                'StpiShrinkOutput': 'Expand',
             },
         )
         self._count += 1
