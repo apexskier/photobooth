@@ -13,20 +13,11 @@ import rawpy
 
 from camera import Camera
 from templates import TEMPLATE_SQUARE, TEMPLATE_STRIPS
-from cli_input import wait_for_input
+from button_input import wait_for_input
 from printer import get_printer
 from lights import LedLightUi
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
-
-COUNTDOWN = 2
-
-def countdown(lights):
-    """Display a countdown timer"""
-    lights.countdown_animation(COUNTDOWN)
-    # for i in reversed(range(0, COUNTDOWN)):
-    #     print(i + 1)
-    #     time.sleep(1)
 
 def read_file(file_path):
     _, file_extension = os.path.splitext(file_path)
@@ -56,7 +47,7 @@ class PhotoStrip():
         captures = []
 
         for index in range(count):
-            countdown(lights)
+            lights.countdown_animation(4) # 4 on blinks, then turn on while capture (5)
             logging.info("capturing photo {}".format(index))
             captures.append(camera.capture())
 
@@ -149,6 +140,8 @@ def main():
 
     try:
         printer = get_printer()
+        if not printer:
+            logging.warn("No printer found")
 
         with LedLightUi() as lights, Camera() as camera:
             test_path = camera.save(
@@ -163,17 +156,22 @@ def main():
                 wait_for_input()
                 capturing = True
 
-                ps = PhotoStrip()
+                try:
+                    ps = PhotoStrip()
 
-                files = ps.capture_files(lights, camera, len(TEMPLATE_STRIPS['layout']))
+                    files = ps.capture_files(lights, camera, len(TEMPLATE_STRIPS['layout']))
 
-                lights.processing_animation()
+                    lights.processing_animation()
 
-                img = create_img_from_template(files, TEMPLATE_STRIPS)
-                ps.save_final_img(img, TEMPLATE_STRIPS['name'])
+                    img = create_img_from_template(files, TEMPLATE_STRIPS)
+                    ps.save_final_img(img, TEMPLATE_STRIPS['name'])
 
-                if printer:
-                    print_image(printer, img)
+                    if printer:
+                        print_image(printer, img)
+
+                except Exception as err:
+                    logging.error(err)
+                    logging.warn("continuing")
 
                 lights.complete_animation()
                 capturing = False

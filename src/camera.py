@@ -57,9 +57,15 @@ class Camera():
         logger.info("cleaning up camera")
         self._camera.exit()
 
-    def capture(self):
+    def capture(self, _attempt=0):
         """Capture an image as fast as possible. Returns an object used in save"""
-        return self._camera.capture(gp.GP_CAPTURE_IMAGE)
+        try:
+            return self._camera.capture(gp.GP_CAPTURE_IMAGE)
+        except gp.GPhoto2Error as err:
+            if err.code == gp.GP_ERROR_IO and _attempt >= 2:
+                logger.warn("GP IO error encountered, trying again (try {})".format(_attempt + 1))
+                return self.capture(_attempt + 1)
+            raise err
 
     def save(self, capture, file_path):
         """Save a previously captured image to the file system"""

@@ -1,17 +1,44 @@
 import logging
+import math
+import time
 
-from gpiozero.pins.mock import MockFactory, MockPWMPin
 from gpiozero import Device, Button, LED, PWMLED
+from gpiozero.threads import GPIOThread
 
 # Set the default pin factory to a mock factory
-Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+#from gpiozero.pins.mock import MockFactory, MockPWMPin
+#Device.pin_factory = MockFactory(pin_class=MockPWMPin)
 
 logger = logging.getLogger("lights")
 
+class MyPWMLED(PWMLED):
+    def ease(self, easing_function, duration=None, background=True):
+        self._stop_blink()
+        self._blink_thread = GPIOThread(
+            target=self._ease,
+            args=(
+                easing_function,
+                duration,
+            )
+        )
+        self._blink_thread.start()
+
+    def _ease(self, easing_function, duration):
+        start = now = time.time()
+        if duration:
+            end = now + duration
+
+        while not duration or now < end:
+            v = easing_function(now - start)
+            self._write(v)
+            if self._blink_thread.stopping.wait(0.01):
+                break
+            now = time.time()
+
 class LedLightUi():
     def __init__(self):
-        self._led = PWMLED(4)
-    
+        self._led = MyPWMLED(pin=13, initial_value=0)
+
     def __enter__(self):
         self.startup_animation()
         return self
@@ -21,25 +48,26 @@ class LedLightUi():
 
     def startup_animation(self):
         logger.info("startup")
-        self._led.blink(on_time=0.3, off_time=0.3, n=3)
-        self._led.off()
+        self._led.blink(on_time=0.3, off_time=0.1)
 
     def ready_animation(self):
         logger.info("ready")
-        self._led.pulse(fade_in_time=1, fade_out_time=1, background=True)
+        self._led.on()
+        self._led.ease(easing_function = lambda ms: (math.sin((ms * 1.2) + (math.pi / 2)) * 0.8 + 1.2) / 2)
 
     def processing_animation(self):
         logger.info("processing")
-        self._led.pulse(fade_in_time=0.5, fade_out_time=0.5, background=True)
+        self._led.on()
+        self._led.ease(easing_function = lambda ms: (math.sin((ms * 4) + (math.pi / 2)) + 1) / 2)
 
     def countdown_animation(self, n):
         logger.info("countdown")
-        self._led.blink(on_time=0.3, off_time=0.4, n=n)
+        self._led.blink(on_time=0.3, off_time=0.7, n=n, background=False)
         self._led.on()
 
     def complete_animation(self):
         logger.info("complete")
-        self._led.blink(on_time=0.2, off_time=0.2, n=5)
+        self._led.blink(on_time=0.2, off_time=0.2, n=5, background=False)
 
     def shutting_down(self):
         logger.info("shutting down")
