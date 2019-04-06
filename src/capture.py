@@ -16,8 +16,13 @@ from templates import TEMPLATE_SQUARE, TEMPLATE_STRIPS
 from button_input import wait_for_input
 from printer import get_printer
 from lights import LedLightUi
+# from upload import Uploader
 
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=os.environ.get("LOGLEVEL", "INFO"),
+    stream=sys.stdout,
+)
 
 def read_file(file_path):
     _, file_extension = os.path.splitext(file_path)
@@ -76,8 +81,9 @@ class PhotoStrip():
         return [os.path.join(self.capture_dir, f) for f in files]
 
     def save_final_img(self, img, name):
-        final_image_path = os.path.join(self.capture_dir, "{}.jpg".format(name))
+        final_image_path = os.path.join(self.capture_dir, "{}_{}.jpg".format(name, self._capture_id))
         img.convert("RGB").save(final_image_path, "JPEG", quality=90)
+        return final_image_path
 
 _CACHED_TEMPLATES = {}
 def get_template_image(template):
@@ -144,14 +150,20 @@ def main():
         if not printer:
             logging.warn("No printer found")
 
-        with LedLightUi() as lights, Camera() as camera:
-            test_path = camera.save(
-                camera.capture(),
-                os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
-            )
-            if not test_path.endswith('.jpg'):
-                logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
+        # uploader = Uploader()
 
+        with LedLightUi() as lights, Camera() as camera:
+            #logging.info("testing camera")
+            #test_capture = camera.capture(),
+            #time.sleep(1)
+            #test_path = camera.save(
+            #    test_capture,
+            #    os.path.join("capture", "test_{}".format(datetime.datetime.now().isoformat()))
+            #)
+            #if not test_path.endswith('.jpg'):
+            #    logging.warn("camera's returning raw files, {}".format(os.splitext(test_path)[1]))
+
+            logging.info("starting capture loop")
             while not keyboard_interrupt:
                 lights.ready_animation()
                 wait_for_input()
@@ -164,13 +176,15 @@ def main():
 
                     lights.processing_animation()
 
-                    img = create_img_from_template(files, TEMPLATE_STRIPS)
-                    ps.save_final_img(img, TEMPLATE_STRIPS['name'])
-                    img = create_img_from_template(files, TEMPLATE_SQUARE)
-                    ps.save_final_img(img, TEMPLATE_SQUARE['name'])
+                    strip_img = create_img_from_template(files, TEMPLATE_STRIPS)
+                    ps.save_final_img(strip_img, TEMPLATE_STRIPS['name'])
 
                     if printer:
-                        print_image(printer, img)
+                        print_image(printer, strip_img)
+
+                    square_img = create_img_from_template(files, TEMPLATE_SQUARE)
+                    square_path = ps.save_final_img(square_img, TEMPLATE_SQUARE['name'])
+                    # uploader.upload_file(square_path)
 
                 except Exception as err:
                     logging.error(err)
@@ -184,4 +198,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as err:
+        logging.error("Shutting down due to error")
+        print(err)
