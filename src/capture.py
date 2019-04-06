@@ -47,9 +47,10 @@ class PhotoStrip():
         captures = []
 
         for index in range(count):
-            lights.countdown_animation(4) # 4 on blinks, then turn on while capture (5)
+            lights.countdown_animation(5) # 5th light captures
             logging.info("capturing photo {}".format(index))
             captures.append(camera.capture())
+            time.sleep(1) # try to avoid i/o issues
 
         logging.info("captured!")
 
@@ -165,6 +166,8 @@ def main():
 
                     img = create_img_from_template(files, TEMPLATE_STRIPS)
                     ps.save_final_img(img, TEMPLATE_STRIPS['name'])
+                    img = create_img_from_template(files, TEMPLATE_SQUARE)
+                    ps.save_final_img(img, TEMPLATE_SQUARE['name'])
 
                     if printer:
                         print_image(printer, img)
