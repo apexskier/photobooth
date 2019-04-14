@@ -2,14 +2,13 @@ import cups
 
 class Printer():
     def __init__(self, printer, conn):
-        self._printer = printer
+        self.name = printer
         self._conn = conn
         self._count = 0
 
     def print_file(self, file_name):
-        return
-        self._conn.printFile(
-            self._printer,
+        job = self._conn.printFile(
+            self.name,
             file_name,
             "{}_{}".format(self._count, file_name),
             {
@@ -18,9 +17,13 @@ class Printer():
                 'StpBorderless': 'True',
                 'StpImageType': 'Photo',
                 'StpiShrinkOutput': 'Expand',
+                'StpSaturation': '1400',
+                'StpContrast': '1500',
+                'StpCyanBalance': '800',
             },
         )
         self._count += 1
+        return job
 
 
 def get_printer():

@@ -16,7 +16,7 @@ from templates import TEMPLATE_SQUARE, TEMPLATE_STRIPS
 from button_input import wait_for_input
 from printer import get_printer
 from lights import LedLightUi
-# from upload import Uploader
+from upload import Uploader
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -92,7 +92,7 @@ def get_template_image(template):
     return _CACHED_TEMPLATES[template['file']]
 
 def create_img_from_template(files, template):
-    logging.info("using template {}".format(TEMPLATE_STRIPS['name']))
+    logging.info("using template {}".format(template['name']))
     template_image = get_template_image(template)
     template_layout = template['layout']
 
@@ -115,7 +115,7 @@ def create_img_from_template(files, template):
     return final
 
 def print_image(printer, img):
-    logging.info("printing")
+    logging.info("printing to {}".format(printer.name))
 
     # initially based on https://github.com/abelits/canon-selphy-print/blob/master/print-selphy-postcard
     base_image_size = (1190, 1760)
@@ -149,8 +149,10 @@ def main():
         printer = get_printer()
         if not printer:
             logging.warn("No printer found")
+        else:
+            logging.info("Found printer {}".format(printer.name))
 
-        # uploader = Uploader()
+        uploader = Uploader()
 
         with LedLightUi() as lights, Camera() as camera:
             #logging.info("testing camera")
@@ -184,7 +186,7 @@ def main():
 
                     square_img = create_img_from_template(files, TEMPLATE_SQUARE)
                     square_path = ps.save_final_img(square_img, TEMPLATE_SQUARE['name'])
-                    # uploader.upload_file(square_path)
+                    uploader.upload_file(square_path)
 
                 except Exception as err:
                     logging.error(err)
