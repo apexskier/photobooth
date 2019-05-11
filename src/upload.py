@@ -41,13 +41,18 @@ class InternetChecker():
 
 
 class Uploader():
-    def __init__(self):
+    def __init__(self, keyfile, scpdst):
         self._internet_checker = InternetChecker()
+        self._keyfile = keyfile
+        self._scpdst = scpdst
 
     def upload_file(self, filepath):
+        if not self._keyfile and not self._scpdst:
+            logger.info("upload not configured")
+            return
         if self._internet_checker.connection_active:
-            keyfile = os.path.join(os.path.dirname(__file__), '../keys/upload')
-            r = subprocess.run(["scp", "-i", keyfile, filepath, "cameronlittle@camlittle.com:photostrips/"], timeout=10)
+            print(["scp", "-i", self._keyfile, filepath, self._scpdst])
+            r = subprocess.run(["scp", "-i", self._keyfile, filepath, self._scpdst], timeout=10)
             if r.returncode == 0:
                 logger.info("sucessfully uploaded {}".format(filepath))
             else:

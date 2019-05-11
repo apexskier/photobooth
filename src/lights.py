@@ -2,17 +2,18 @@ import logging
 import math
 import time
 
-from gpiozero import Device, Button, LED, PWMLED
+from gpiozero import Button, LED, PWMLED
 from gpiozero.threads import GPIOThread
 
 # Set the default pin factory to a mock factory
-#from gpiozero.pins.mock import MockFactory, MockPWMPin
-#Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+# from gpiozero import Device
+# from gpiozero.pins.mock import MockFactory, MockPWMPin
+# Device.pin_factory = MockFactory(pin_class=MockPWMPin)
 
 logger = logging.getLogger("lights")
 
 class MyPWMLED(PWMLED):
-    def ease(self, easing_function, duration=None, background=True):
+    def ease(self, easing_function, duration=None):
         self._stop_blink()
         self._blink_thread = GPIOThread(
             target=self._ease,

@@ -7,6 +7,7 @@ import os
 import datetime
 import time
 import sys
+import argparse
 
 from PIL import Image, ImageOps
 import rawpy
@@ -17,6 +18,11 @@ from button_input import wait_for_input
 from printer import get_printer
 from lights import LedLightUi
 from upload import Uploader
+
+parser = argparse.ArgumentParser(description='Photobooth')
+parser.add_argument('--upload_keyfile', help='ssh key for remote upload')
+parser.add_argument('--upload_dst', help='scp destination location (key must allow access)')
+args = parser.parse_args()
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -152,7 +158,7 @@ def main():
         else:
             logging.info("Found printer {}".format(printer.name))
 
-        uploader = Uploader()
+        uploader = Uploader(args.upload_keyfile, args.upload_dst)
 
         with LedLightUi() as lights, Camera() as camera:
             #logging.info("testing camera")

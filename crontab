@@ -1,1 +1,1 @@
-@reboot /home/pi/photostrip/run.sh
+@reboot /home/pi/photostrip/run.sh --upload_key /path/to/key --upload_dst yourserver:~/photostrips
