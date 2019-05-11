@@ -30,8 +30,14 @@ My printer is a [Canon SELPHY CP1300](https://www.usa.canon.com/internet/portal/
 
 - Ensure Camera > 1 > "Quality" is not set to RAW
 - Ensure Toolbox > 4 > "USB Connection" is set to "PC Remote"
+- Ensure camera is on single shot mode
 
 ### Printer issues
 
 - If the printer sleeps, turn it back on. It will process jobs sent to it while asleep
 - If the printer runs out of ink/paper, replace both
+
+## Adding templates
+
+Custom templates can be added and used pretty easily. Take a look at `src/templates.py`. You'll create a base image file and describe
+the plaes images will be written into.
