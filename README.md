@@ -1,18 +1,24 @@
-## Dev Setup
+# Photobooth
 
-numpy is slow to download
+This is a little photobooth application for my wedding (and more, hopefully).
 
-```sh
-sudo apt install libraw-dev # supports pyraw
-```
+It's built to be installed on a raspberry pi and uses a physical arcade button and an LED for the user interface (no screen).
+
+I use a Sony Alpha 6300 camera, but it should work with any camera that supports USB control via [gphoto2](http://www.gphoto.org/).
+
+My printer is a [Canon SELPHY CP1300](https://www.usa.canon.com/internet/portal/us/home/products/details/printers/mobile-compact-printer/cp1300-bkn), but it's not required.
+
+## Setup
+
+- install python 3+
+- `sudo apt install libraw-dev` (for pyraw support)
+  - note: I ended up changing my camera to only capture JPEG, since raw processing and transfer is really slow and was causing issues
+- create a virtualenv
+- `pip install -r requirements.txt`
+  - note: numpy is slow and painful to install
+- to autostart on boot, I used cron. See the `crontab` file for an example
 
 ## Usage
-
-- Ensure Camera > 1 > "Quality" is not set to RAW
-- Ensure Toolbox > 4 > "USB Connection" is set to "PC Remote"
-
-- If the printer sleeps, turn it back on. It will process jobs sent to it while asleep
-- If the printer runs out of ink/paper, replace both
 
 - When started, light will blink on and off while initalizing
 - Light will slowly pulse brighter and dimmer when ready
@@ -20,10 +26,10 @@ sudo apt install libraw-dev # supports pyraw
 - Light will pulse on and off quickly while processing
 - Light will flash quickly when complete, then resume slow pulsing
 
-## TODO
+### Camera setup
+- Ensure Camera > 1 > "Quality" is not set to RAW
+- Ensure Toolbox > 4 > "USB Connection" is set to "PC Remote"
 
-- Upload square photo for download?
-- Camera I/O kinks?
-- Printer gamma adjustment?
-
-- Light stand and backdrop
+### Printer issues
+- If the printer sleeps, turn it back on. It will process jobs sent to it while asleep
+- If the printer runs out of ink/paper, replace both
